@@ -85,7 +85,7 @@ CopySToStack:
   la a0, ballVelocityX
   lb a1, 0(a0)
   la a0, ballX
-  lbu s3, 0(a0)
+  #lbu s3, 0(a0)
 
   add s3, s3, a1   # ball X
   sb s3, 0(a0)
@@ -93,7 +93,7 @@ CopySToStack:
   la a0, ballVelocityY
   lb a1, 0(a0)
   la a0, ballY
-  lbu s4, 0(a0)
+  #lbu s4, 0(a0)
 
   add s4, s4, a1   # ball y
   sb s4, 0(a0)
