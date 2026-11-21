@@ -6,7 +6,7 @@ using RarsPixel = uint32_t;
 using TftPixel = uint16_t;
 
 extern "C" {
-  volatile uint8_t controlInputs = 0x00FF; // input positions for left, right
+  volatile uint8_t controlInputs = 0xFF; // input positions for left, right
   volatile uint8_t ballX = 120;
   volatile uint8_t ballY = 120;
   volatile int8_t ballVelocityX = 1;
@@ -18,6 +18,9 @@ constexpr int screenHeight = 240;
 constexpr int circleRadius = 20;
 
 constexpr RarsPixel white = 0x00FFFFFF;
+
+constexpr int leftPot = 27;
+constexpr int rightPot = 26;
 
 TFT_eSPI display = TFT_eSPI();
 
@@ -116,6 +119,24 @@ leftPositions:
   .byte 61, 36,  107, 18
   .byte 77, 26,  126, 17
 
+rightPositions:
+  .byte 114, 223,  163, 214
+  .byte 133, 222,  179, 204
+  .byte 151, 218,  194, 192
+  .byte 169, 211,  206, 177
+  .byte 185, 200,  215, 160
+  .byte 198, 187,  221, 142
+  .byte 209, 171,  223, 123
+  .byte 217, 154,  222, 104
+  .byte 222, 136,  217, 86
+  .byte 223, 117,  209, 69
+  .byte 221, 98,  198, 53
+  .byte 215, 80,  185, 40
+  .byte 206, 63,  169, 29
+  .byte 194, 48,  151, 22
+  .byte 179, 36,  133, 18
+  .byte 163, 26,  114, 17
+
 RenderBackground:
   mv   t0, s0
   li   t1, 0
@@ -147,7 +168,7 @@ RenderCircle:
 
 RCLoopY:
   add  t2, s4, s5
-  bgt  t1, t2, RenderLeftBar
+  bgt  t1, t2, RenderLeftPaddle
 
   sub  t5, t1, s4
   mul  t5, t5, t5
@@ -179,20 +200,24 @@ RCEndLoopX:
   addi t1, t1, 1
   j  RCLoopY
 
-RenderLeftBar:
+RenderLeftPaddle:
   la   t0, controlInputs   # address of control byte
-  lbu  t1, 0(t0)      # t1 = control input byte
-
-  addi t1, t1, 0x10
-  sb t1, 0(t0) # increment to the next bar position
-  li t0, 0xF0
-  blt t1, t0, ContinueLeftBar
-  andi t1, t1, 0x0F
-
-ContinueLeftBar:
+  lbu  t1, 0(t0)      # t1 = control input bytes
   srli t1, t1, 4      # t1 = upper 4 bits
 
   la t0, leftPositions  # address of first line
+  slli t1, t1, 2      # * 4 because there are 4 bytes per line
+  add a0, t0, t1      # a0 = baseAddress + positionNum
+  li a1, 0x00000000     # black color
+
+  jal  ra, DrawLine
+
+RenderRightPaddle:
+  la   t0, controlInputs   # address of control byte
+  lbu  t1, 0(t0)      # t1 = control input bytes
+  andi t1, t1, 0x0F      # t1 = lower 4 bits
+
+  la t0, rightPositions  # address of first line
   slli t1, t1, 2      # * 4 because there are 4 bytes per line
   add a0, t0, t1      # a0 = baseAddress + positionNum
   li a1, 0x00FF0000     # red color
@@ -293,7 +318,14 @@ void initializeDisplay() {
   display.setSwapBytes(true);
 }
 
-void drawFrame() {
+void runFrame() {
+  int leftVal = analogRead(leftPot)*15/1000;
+  int rightVal = analogRead(rightPot)*15/1000;
+  Serial.print("Left: ");
+  Serial.println(leftVal);
+  Serial.print("Right: ");
+  Serial.println(rightVal);
+  controlInputs = leftVal*0x10 + rightVal;
   render(
     framebuffer,
     screenWidth,
@@ -306,9 +338,12 @@ void drawFrame() {
 }
 
 void setup() {
+  pinMode(leftPot, INPUT);
+  pinMode(rightPot, INPUT);
+  Serial.begin(9600);
   initializeDisplay();
-  for (int i=0; i<50; i++) {
-    drawFrame();
+  for (int i=0; i<75; i++) {
+    runFrame();
   }
 }
 
